@@ -317,25 +317,26 @@ public:
   localIndex packByIndex( buffer_unit_type * & buffer, arrayView1d< localIndex const > const & packList, bool withMetadata, bool onDevice, parallelDeviceEvents & events ) const override final
   {
     localIndex packedSize = 0;
-    if( sizedFromParent() == 1 )
+    if( withMetadata )
     {
-      if( withMetadata ) packedSize += bufferOps::Pack< true >( buffer, getName() );
-      if( onDevice )
+      packedSize += bufferOps::Pack< true >( buffer, getName() );
+    }
+    if( onDevice )
+    {
+      if( withMetadata )
       {
-        if( withMetadata )
-        {
-          packedSize += wrapperHelpers::PackByIndexDevice< true >( buffer, reference(), packList, events );
-        }
-        else
-        {
-          packedSize += wrapperHelpers::PackDataByIndexDevice< true >( buffer, reference(), packList, events );
-        }
+        packedSize += wrapperHelpers::PackByIndexDevice< true >( buffer, reference(), packList, events );
       }
       else
       {
-        packedSize += wrapperHelpers::PackByIndex< true >( buffer, *m_data, packList );
+        packedSize += wrapperHelpers::PackDataByIndexDevice< true >( buffer, reference(), packList, events );
       }
     }
+    else
+    {
+      packedSize += wrapperHelpers::PackByIndex< true >( buffer, *m_data, packList );
+    }
+
     return packedSize;
   }
 
@@ -372,24 +373,24 @@ public:
   {
     localIndex packedSize = 0;
     buffer_unit_type * buffer = nullptr;
-    if( sizedFromParent() == 1 )
+    if( withMetadata )
     {
-      if( withMetadata ) packedSize += bufferOps::Pack< false >( buffer, getName() );
-      if( onDevice )
+      packedSize += bufferOps::Pack< false >( buffer, getName() );
+    }
+    if( onDevice )
+    {
+      if( withMetadata )
       {
-        if( withMetadata )
-        {
-          packedSize += wrapperHelpers::PackByIndexDevice< false >( buffer, reference(), packList, events );
-        }
-        else
-        {
-          packedSize += wrapperHelpers::PackDataByIndexDevice< false >( buffer, reference(), packList, events );
-        }
+        packedSize += wrapperHelpers::PackByIndexDevice< false >( buffer, reference(), packList, events );
       }
       else
       {
-        packedSize += wrapperHelpers::PackByIndex< false >( buffer, *m_data, packList );
+        packedSize += wrapperHelpers::PackDataByIndexDevice< false >( buffer, reference(), packList, events );
       }
+    }
+    else
+    {
+      packedSize += wrapperHelpers::PackByIndex< false >( buffer, *m_data, packList );
     }
     return packedSize;
   }
@@ -430,29 +431,26 @@ public:
   localIndex unpackByIndex( buffer_unit_type const * & buffer, arrayView1d< localIndex const > const & unpackIndices, bool withMetadata, bool onDevice, parallelDeviceEvents & events ) override final
   {
     localIndex unpackedSize = 0;
-    if( sizedFromParent()==1 )
+    if( withMetadata )
+    {
+      string name;
+      unpackedSize += bufferOps::Unpack( buffer, name );
+      GEOSX_ERROR_IF( name != getName(), "buffer unpack leads to wrapper names that don't match" );
+    }
+    if( onDevice )
     {
       if( withMetadata )
       {
-        string name;
-        unpackedSize += bufferOps::Unpack( buffer, name );
-        GEOSX_ERROR_IF( name != getName(), "buffer unpack leads to wrapper names that don't match" );
-      }
-      if( onDevice )
-      {
-        if( withMetadata )
-        {
-          unpackedSize += wrapperHelpers::UnpackByIndexDevice( buffer, referenceAsView(), unpackIndices, events );
-        }
-        else
-        {
-          unpackedSize += wrapperHelpers::UnpackDataByIndexDevice( buffer, referenceAsView(), unpackIndices, events );
-        }
+        unpackedSize += wrapperHelpers::UnpackByIndexDevice( buffer, referenceAsView(), unpackIndices, events );
       }
       else
       {
-        unpackedSize += wrapperHelpers::UnpackByIndex( buffer, *m_data, unpackIndices );
+        unpackedSize += wrapperHelpers::UnpackDataByIndexDevice( buffer, referenceAsView(), unpackIndices, events );
       }
+    }
+    else
+    {
+      unpackedSize += wrapperHelpers::UnpackByIndex( buffer, *m_data, unpackIndices );
     }
     return unpackedSize;
   }
@@ -541,7 +539,7 @@ public:
   ///////////////////////////////////////////////////////////////////////////////////////////////////
   virtual void copy( localIndex const sourceIndex, localIndex const destIndex ) override
   {
-    if( sizedFromParent() )
+    if( sizedFromParent() ) // `if` here too.
     {
       copy_wrapper::copy( reference(), sourceIndex, destIndex );
     }
