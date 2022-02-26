@@ -1,0 +1,60 @@
+<?xml version="1.0" ?>
+
+<Problem>
+
+  <Included>
+    <File name="cube_base.xml"/>
+  </Included>
+
+  <Solvers
+    gravityVector="{ 0.0, 0.0, 0.0 }">
+
+    <SolidMechanicsLagrangianSSLE
+      name="mechSolver"
+      timeIntegrationOption="QuasiStatic"
+      discretization="FE1"
+      logLevel="0"
+      targetRegions="{ region }">
+      <NonlinearSolverParameters
+        newtonTol="1e-2"
+        newtonMaxIter="2"
+        lineSearchAction="None"
+        lineSearchMaxCuts="1"
+        maxTimeStepCuts="1"/>
+      <LinearSolverParameters
+        solverType="gmres"
+        krylovTol="1e-8"
+        krylovMaxIter="500"
+        preconditionerType="multiscale"
+        logLevel="1">
+        <Multiscale
+          basisType="msrsb"
+          maxLevels="3"
+          numSmootherSweeps="1"
+          preOrPostSmoothing="both"
+          smootherType="l1sgs"
+          boundarySets="{xneg,xpos,yneg,ypos,zneg,zpos}"
+          debugLevel="0"
+          coarseType="direct">
+          <Coarsening
+            partitionType="cartesian"
+            ratio="{ 4, 4, 4 }"
+            minLocalDof="0"
+            minGlobalDof="2000">
+            <Metis
+              method="kway"
+              minCommonNodes="3"
+              ufactor="30"/>
+          </Coarsening>
+          <MsRSB
+            maxIter="100"
+            tolerance="1e-2"
+            relaxation="0.6666666666666666"
+            checkFrequency="5"/>
+        </Multiscale>
+      </LinearSolverParameters>
+    </SolidMechanicsLagrangianSSLE>
+
+  </Solvers>
+
+</Problem>

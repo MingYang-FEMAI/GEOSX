@@ -18,18 +18,19 @@
 
 #include "SinglePhaseFVM.hpp"
 
-#include "mesh/mpiCommunications/CommunicationTools.hpp"
 #include "common/TimingMacros.hpp"
 #include "constitutive/fluid/singleFluidSelector.hpp"
 #include "constitutive/permeability/PermeabilityExtrinsicData.hpp"
 #include "constitutive/ConstitutivePassThru.hpp"
 #include "discretizationMethods/NumericalMethodsManager.hpp"
-#include "mainInterface/ProblemManager.hpp"
 #include "finiteVolume/BoundaryStencil.hpp"
 #include "finiteVolume/FiniteVolumeManager.hpp"
 #include "finiteVolume/FluxApproximationBase.hpp"
 #include "fieldSpecification/FieldSpecificationManager.hpp"
 #include "fieldSpecification/AquiferBoundaryCondition.hpp"
+#include "linearAlgebra/multiscale/MultiscalePreconditioner.hpp"
+#include "mainInterface/ProblemManager.hpp"
+#include "mesh/mpiCommunications/CommunicationTools.hpp"
 #include "physicsSolvers/fluidFlow/FlowSolverBaseExtrinsicData.hpp"
 #include "physicsSolvers/fluidFlow/SinglePhaseBaseExtrinsicData.hpp"
 #include "physicsSolvers/fluidFlow/SinglePhaseBaseKernels.hpp"
@@ -72,6 +73,13 @@ void SinglePhaseFVM< BASE >::initializePreSubGroups()
 }
 
 template< typename BASE >
+void SinglePhaseFVM< BASE >::postProcessInput()
+{
+  LinearSolverParameters & linParams = m_linearSolverParameters.get();
+  linParams.multiscale.fieldName = extrinsicMeshData::flow::pressure::key();
+}
+
+template< typename BASE >
 void SinglePhaseFVM< BASE >::setupDofs( DomainPartition const & domain,
                                         DofManager & dofManager ) const
 {
@@ -102,6 +110,15 @@ void SinglePhaseFVM< BASE >::setupSystem( DomainPartition & domain,
                      rhs,
                      solution,
                      setSparsity );
+
+  LinearSolverParameters & linParams = m_linearSolverParameters.get();
+  if( !m_precond && linParams.solverType != LinearSolverParameters::SolverType::direct )
+  {
+    if( linParams.preconditionerType == LinearSolverParameters::PreconditionerType::multiscale )
+    {
+      m_precond = std::make_unique< MultiscalePreconditioner< LAInterface > >( linParams, domain );
+    }
+  }
 
 }
 

@@ -202,6 +202,8 @@ public:
     static constexpr char const * elementCenterString() { return "elementCenter"; }
     /// @return String key for the member level field for the element volume.
     static constexpr char const * elementVolumeString() { return "elementVolume"; }
+    /// @return String key for cartesian IJK index
+    static constexpr char const * cartesianIndexString() { return "cartesianIndex"; }
   };
 
   /**

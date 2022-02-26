@@ -28,6 +28,7 @@
 #include "constitutive/contact/ContactBase.hpp"
 #include "finiteElement/FiniteElementDiscretizationManager.hpp"
 #include "finiteElement/Kinematics.h"
+#include "linearAlgebra/multiscale/MultiscalePreconditioner.hpp"
 #include "LvArray/src/output.hpp"
 #include "mesh/DomainPartition.hpp"
 #include "mainInterface/ProblemManager.hpp"
@@ -130,6 +131,7 @@ void SolidMechanicsLagrangianFEM::postProcessInput()
   linParams.isSymmetric = true;
   linParams.dofsPerNode = 3;
   linParams.amg.separateComponents = true;
+  linParams.multiscale.fieldName = keys::TotalDisplacement;
 }
 
 SolidMechanicsLagrangianFEM::~SolidMechanicsLagrangianFEM()
@@ -964,7 +966,14 @@ void SolidMechanicsLagrangianFEM::setupSystem( DomainPartition & domain,
   sparsityPattern.compress();
   localMatrix.assimilate< parallelDevicePolicy<> >( std::move( sparsityPattern ) );
 
-
+  LinearSolverParameters & linParams = m_linearSolverParameters.get();
+  if( !m_precond && linParams.solverType != LinearSolverParameters::SolverType::direct )
+  {
+    if( linParams.preconditionerType == LinearSolverParameters::PreconditionerType::multiscale )
+    {
+      m_precond = std::make_unique< MultiscalePreconditioner< LAInterface > >( linParams, domain );
+    }
+  }
 }
 
 void SolidMechanicsLagrangianFEM::assembleSystem( real64 const GEOSX_UNUSED_PARAM( time_n ),
@@ -1000,15 +1009,6 @@ void SolidMechanicsLagrangianFEM::assembleSystem( real64 const GEOSX_UNUSED_PARA
                                                                                   m_massDamping,
                                                                                   m_stiffnessDamping,
                                                                                   dt );
-  }
-
-  if( getLogLevel() >= 2 )
-  {
-    GEOSX_LOG_RANK_0( "After SolidMechanicsLagrangianFEM::AssembleSystem" );
-    GEOSX_LOG_RANK_0( "\nJacobian:\n" );
-    //std::cout<< localMatrix;
-    GEOSX_LOG_RANK_0( "\nResidual:\n" );
-    std::cout<< localRhs;
   }
 }
 
@@ -1177,6 +1177,9 @@ void SolidMechanicsLagrangianFEM::solveSystem( DofManager const & dofManager,
                                                ParallelVector & solution )
 {
   solution.zero();
+  // Flip system sign to ensure matrix is positive definite
+  matrix.scale( -1.0 );
+  rhs.scale( -1.0 );
   SolverBase::solveSystem( dofManager, matrix, rhs, solution );
 }
 

@@ -14,6 +14,18 @@ set( linearAlgebra_headers
      interfaces/VectorBase.hpp
      interfaces/dense/BlasLapackFunctions.h
      interfaces/dense/BlasLapackLA.hpp
+     multiscale/CartesianPartitioner.hpp
+     multiscale/Coarsening.hpp
+     multiscale/LevelBuilderBase.hpp
+     multiscale/MeshData.hpp
+     multiscale/MeshLevel.hpp
+     multiscale/MeshObjectManager.hpp
+     multiscale/MeshUtils.hpp
+     multiscale/MetisPartitioner.hpp
+     multiscale/MsrsbLevelBuilder.hpp
+     multiscale/MsrsbUtils.hpp
+     multiscale/MultiscalePreconditioner.hpp
+     multiscale/PartitionerBase.hpp
      solvers/BicgstabSolver.hpp
      solvers/BlockPreconditioner.hpp
      solvers/CgSolver.hpp
@@ -46,6 +58,17 @@ set( linearAlgebra_headers
 set( linearAlgebra_sources
      DofManager.cpp
      interfaces/dense/BlasLapackLA.cpp
+     multiscale/CartesianPartitioner.cpp
+     multiscale/Coarsening.cpp
+     multiscale/LevelBuilderBase.cpp
+     multiscale/MeshLevel.cpp
+     multiscale/MeshObjectManager.cpp
+     multiscale/MeshUtils.cpp
+     multiscale/MetisPartitioner.cpp
+     multiscale/MsrsbLevelBuilder.cpp
+     multiscale/MsrsbUtils.cpp
+     multiscale/MultiscalePreconditioner.cpp
+     multiscale/PartitionerBase.cpp
      solvers/BicgstabSolver.cpp
      solvers/BlockPreconditioner.cpp
      solvers/CgSolver.cpp
@@ -159,6 +182,11 @@ endif()
 
 if ( ENABLE_CUDA )
     list( APPEND dependencyList cuda )
+endif()
+
+# We depend on METIS for multiscale coarsening
+if( ENABLE_METIS )
+    list( APPEND dependencyList metis )
 endif()
 
 blt_add_library( NAME       linearAlgebra

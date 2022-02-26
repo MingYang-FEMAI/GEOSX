@@ -3,7 +3,8 @@
 ========== ==== =============================== 
 Name       Type Description                     
 ========== ==== =============================== 
-Multiscale node :ref:`DATASTRUCTURE_Multiscale` 
+Coarsening node :ref:`DATASTRUCTURE_Coarsening` 
+MsRSB      node :ref:`DATASTRUCTURE_MsRSB`      
 ========== ==== =============================== 
 
 

@@ -134,6 +134,13 @@ Element: ChomboIO
 .. include:: ../../coreComponents/schema/docs/ChomboIO.rst
 
 
+.. _XML_Coarsening:
+
+Element: Coarsening
+===================
+.. include:: ../../coreComponents/schema/docs/Coarsening.rst
+
+
 .. _XML_CompositeFunction:
 
 Element: CompositeFunction
@@ -512,6 +519,13 @@ Element: Mesh
 .. include:: ../../coreComponents/schema/docs/Mesh.rst
 
 
+.. _XML_Metis:
+
+Element: Metis
+==============
+.. include:: ../../coreComponents/schema/docs/Metis.rst
+
+
 .. _XML_ModifiedCamClay:
 
 Element: ModifiedCamClay
@@ -519,11 +533,25 @@ Element: ModifiedCamClay
 .. include:: ../../coreComponents/schema/docs/ModifiedCamClay.rst
 
 
+.. _XML_MsRSB:
+
+Element: MsRSB
+==============
+.. include:: ../../coreComponents/schema/docs/MsRSB.rst
+
+
 .. _XML_MultiphasePoromechanics:
 
 Element: MultiphasePoromechanics
 ================================
 .. include:: ../../coreComponents/schema/docs/MultiphasePoromechanics.rst
+
+
+.. _XML_Multiscale:
+
+Element: Multiscale
+===================
+.. include:: ../../coreComponents/schema/docs/Multiscale.rst
 
 
 .. _XML_MultivariableTableFunction:
@@ -1139,6 +1167,13 @@ Datastructure: ChomboIO
 .. include:: ../../coreComponents/schema/docs/ChomboIO_other.rst
 
 
+.. _DATASTRUCTURE_Coarsening:
+
+Datastructure: Coarsening
+=========================
+.. include:: ../../coreComponents/schema/docs/Coarsening_other.rst
+
+
 .. _DATASTRUCTURE_CompositeFunction:
 
 Datastructure: CompositeFunction
@@ -1545,6 +1580,13 @@ Datastructure: MeshBodies
 .. include:: ../../coreComponents/schema/docs/MeshBodies_other.rst
 
 
+.. _DATASTRUCTURE_Metis:
+
+Datastructure: Metis
+====================
+.. include:: ../../coreComponents/schema/docs/Metis_other.rst
+
+
 .. _DATASTRUCTURE_ModifiedCamClay:
 
 Datastructure: ModifiedCamClay
@@ -1552,11 +1594,25 @@ Datastructure: ModifiedCamClay
 .. include:: ../../coreComponents/schema/docs/ModifiedCamClay_other.rst
 
 
+.. _DATASTRUCTURE_MsRSB:
+
+Datastructure: MsRSB
+====================
+.. include:: ../../coreComponents/schema/docs/MsRSB_other.rst
+
+
 .. _DATASTRUCTURE_MultiphasePoromechanics:
 
 Datastructure: MultiphasePoromechanics
 ======================================
 .. include:: ../../coreComponents/schema/docs/MultiphasePoromechanics_other.rst
+
+
+.. _DATASTRUCTURE_Multiscale:
+
+Datastructure: Multiscale
+=========================
+.. include:: ../../coreComponents/schema/docs/Multiscale_other.rst
 
 
 .. _DATASTRUCTURE_MultivariableTableFunction:
