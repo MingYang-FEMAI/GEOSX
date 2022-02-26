@@ -80,7 +80,7 @@ void CellElementSubRegion::copyFromCellBlock( CellBlockABC & cellBlock )
     {
       using ArrayType = decltype( array );
       Wrapper< ArrayType > & wrapperT = Wrapper< ArrayType >::cast( wrapper );
-      this->registerWrapper( wrapper.getName(), &wrapperT.reference() );
+      this->registerWrapper( wrapper.getName(), std::make_unique< ArrayType >( wrapperT.reference() ) );
     } );
   } );
 }

@@ -54,7 +54,7 @@
   </Solvers>
 
   <Mesh>
-    <PAMELAMeshGenerator
+    <PAMELAMesh
       name="mesh1"
       file="staircase3d_tet.msh"/>
 
