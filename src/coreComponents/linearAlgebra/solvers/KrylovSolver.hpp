@@ -61,11 +61,6 @@ public:
                 LinearOperator< Vector > const & precond );
 
   /**
-   * @brief Virtual destructor
-   */
-  virtual ~KrylovSolver() override = default;
-
-  /**
    * @brief Solve preconditioned system
    * @param [in] b system right hand side.
    * @param [inout] x system solution (input = initial guess, output = solution).

@@ -18,6 +18,7 @@
 
 #include "GmresSolver.hpp"
 
+#include "common/TimingMacros.hpp"
 #include "common/Stopwatch.hpp"
 #include "linearAlgebra/interfaces/InterfaceTypes.hpp"
 #include "linearAlgebra/solvers/KrylovUtils.hpp"
@@ -88,6 +89,8 @@ template< typename VECTOR >
 void GmresSolver< VECTOR >::solve( Vector const & b,
                                    Vector & x ) const
 {
+  GEOSX_MARK_FUNCTION;
+
   // We create Krylov subspace vectors once using the size and partitioning of b.
   // On repeated calls to solve() input vectors must have the same size and partitioning.
   if( !m_kspaceInitialized )

@@ -84,10 +84,12 @@ protected:
   /// Type alias for a compatible vector class
   using Vector = VECTOR;
 
-  using Base::numLocalRows;
-  using Base::numLocalCols;
   using Base::numGlobalRows;
   using Base::numGlobalCols;
+  using Base::numGlobalNonzeros;
+  using Base::numLocalRows;
+  using Base::numLocalCols;
+  using Base::numLocalNonzeros;
 
   /**
    * @name Status query methods
@@ -855,18 +857,6 @@ protected:
    * @note Also see note for @p jlower() about the meaning of "owned" columns.
    */
   virtual globalIndex jupper() const = 0;
-
-  /**
-   * @brief Returns the number of nonzeros in the local portion of the matrix
-   * @return the number of nonzeros in the local portion of the matrix
-   */
-  virtual localIndex numLocalNonzeros() const = 0;
-
-  /**
-   * @brief Returns the total number of nonzeros in the matrix
-   * @return the total number of nonzeros in the matrix
-   */
-  virtual globalIndex numGlobalNonzeros() const = 0;
 
   /**
    * @brief Returns the infinity norm of the matrix.

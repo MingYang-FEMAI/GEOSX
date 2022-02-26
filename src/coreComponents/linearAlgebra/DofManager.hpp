@@ -20,6 +20,7 @@
 #define GEOSX_LINEARALGEBRA_DOFMANAGER_HPP_
 
 #include "common/DataTypes.hpp"
+#include "common/Span.hpp"
 #include "linearAlgebra/utilities/ComponentMask.hpp"
 
 #include <numeric>
@@ -31,6 +32,19 @@ class DomainPartition;
 class MeshLevel;
 class ObjectManagerBase;
 class FluxApproximationBase;
+
+/**
+ * @brief Describes field support on a single mesh body/level
+ */
+struct DofSupport
+{
+  /// name of the mesh body
+  string meshBodyName;
+  /// name of the mesh level
+  string meshLevelName;
+  /// list of the region names
+  std::vector< string > regionNames;
+};
 
 /**
  * @class DofManager
@@ -57,19 +71,6 @@ public:
   {
     string fieldName;  ///< Name of the DOF field in DofManager
     CompMask mask;     ///< Mask that defines component selection
-  };
-
-  /**
-   * @brief Describes field support on a single mesh body/level
-   */
-  struct Regions
-  {
-    /// name of the mesh body
-    string meshBodyName;
-    /// name of the mesh level
-    string meshLevelName;
-    /// list of the region names
-    std::vector< string > regionNames;
   };
 
   /**
@@ -155,10 +156,10 @@ public:
   void addField( string const & fieldName,
                  Location location,
                  integer components,
-                 std::vector< Regions > const & regions = {} );
+                 std::vector< DofSupport > const & regions = {} );
 
   /**
-   * @copydoc addField(string const &, Location, integer, std::vector< Regions > const &)
+   * @copydoc addField(string const &, Location, integer, std::vector< DofSupport > const &)
    *
    * Overload for  map< string, array1d< string > > bodyRegions used by physics solvers.
    */
@@ -193,10 +194,10 @@ public:
   void addCoupling( string const & rowFieldName,
                     string const & colFieldName,
                     Connector connectivity,
-                    std::vector< Regions > const & regions = {},
+                    std::vector< DofSupport > const & regions = {},
                     bool symmetric = true );
   /**
-   * @copydoc addCoupling( string const & ,string const & ,Connector , std::vector< Regions > const & , bool  );
+   * @copydoc addCoupling( string const & ,string const & ,Connector , std::vector< DofSupport > const & , bool  );
    */
   void addCoupling( string const & rowFieldName,
                     string const & colFieldName,
@@ -302,6 +303,12 @@ public:
    * @param [in] fieldName name of the field.
    */
   globalIndex globalOffset( string const & fieldName ) const;
+
+  /**
+   * @brief @return support of the given field (list of mesh body/levels/regions)
+   * @param fieldName
+   */
+  Span< DofSupport const > support( string const & fieldName ) const;
 
   /**
    * @brief Return an array of number of components per field, sorted by field registration order.
@@ -457,7 +464,7 @@ private:
     string name;                   ///< field name
     string key;                    ///< string key for index array
     string docstring;              ///< documentation string
-    std::vector< Regions > support;///< list of mesh body/level/region supports
+    std::vector< DofSupport > support;///< list of mesh body/level/region supports
     Location location;             ///< support location
     integer numComponents = 1;     ///< number of vector components
     localIndex numLocalDof = 0;    ///< number of local rows
@@ -473,7 +480,7 @@ private:
   struct CouplingDescription
   {
     Connector connector = Connector::None;  //!< geometric object defining dof connections
-    std::vector< Regions > support; //!< list of region names
+    std::vector< DofSupport > support; //!< list of region names
     FluxApproximationBase const * stencils = nullptr; //!< pointer to flux stencils for stencil based connections
   };
 
