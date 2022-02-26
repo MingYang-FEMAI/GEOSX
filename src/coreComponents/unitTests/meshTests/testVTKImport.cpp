@@ -35,7 +35,7 @@ using namespace geosx::dataRepository;
 template< class V >
 void TestMeshImport( string const & meshFilePath, V const & validate )
 {
-  string const meshNode = "<Mesh ><VTKMeshGenerator name=\"Cube\" file=\"" + meshFilePath + "\" /></Mesh>";
+  string const meshNode = "<Mesh ><VTKMesh name=\"Cube\" file=\"" + meshFilePath + "\" /></Mesh>";
   xmlWrapper::xmlDocument xmlDocument;
   xmlDocument.load_buffer( meshNode.c_str(), meshNode.size() );
   xmlWrapper::xmlNode xmlMeshNode = xmlDocument.child( "Mesh" );
@@ -115,31 +115,28 @@ TEST( VTKImport, cube )
 
     // 1 elements type on 3 regions ("-1", "3", "9") = 3 sub-groups
     ASSERT_EQ( cellBlockManager.getCellBlocks().numSubGroups(), 3 );
-    GEOSX_LOG_RANK( cellBlockManager.getCellBlocks().getGroup( 0 ).getName() );
-    GEOSX_LOG_RANK( cellBlockManager.getCellBlocks().getGroup( 1 ).getName() );
-    GEOSX_LOG_RANK( cellBlockManager.getCellBlocks().getGroup( 2 ).getName() );
 
     // FIXME How to get the CellBlock as a function of the region, without knowing the naming pattern.
-    CellBlockABC const & hexs = cellBlockManager.getCellBlocks().getGroup< CellBlockABC >( "hexahedra" );
-    CellBlockABC const & hexs3 = cellBlockManager.getCellBlocks().getGroup< CellBlockABC >( "3_hexahedra" );
-    CellBlockABC const & hexs9 = cellBlockManager.getCellBlocks().getGroup< CellBlockABC >( "9_hexahedra" );
-
-    for( CellBlockABC const * h: { &hexs, &hexs3, &hexs9 } )
+    std::array< std::pair< string, int >, 3 > const expectedCellBlocks =
     {
+      {
+        { "hexahedra", expected( 1, {  1, 0 } ) },
+        { "3_hexahedra", expected( 25, { 17, 8 } ) },
+        { "9_hexahedra", expected( 1, {  0, 1 } ) }
+      }
+    };
+    ASSERT_EQ( cellBlockManager.getCellBlocks().numSubGroups(), expectedCellBlocks.size() );
+
+    for( const auto & nameAndSize : expectedCellBlocks )
+    {
+      ASSERT_TRUE( cellBlockManager.getCellBlocks().hasGroup< CellBlockABC >( nameAndSize.first ) );
+      CellBlockABC const * h = &cellBlockManager.getCellBlocks().getGroup< CellBlockABC >( nameAndSize.first );
+      localIndex const expectedSize = nameAndSize.second;
+
       // 8 nodes, 12 edges and 6 faces per hex.
       ASSERT_EQ( h->getElemToNodes().size( 1 ), 8 );
       ASSERT_EQ( h->getElemToEdges().size( 1 ), 12 );
       ASSERT_EQ( h->getElemToFaces().size( 1 ), 6 );
-    }
-
-    std::pair< CellBlockABC const *, localIndex > const
-    p{ &hexs, expected( 1, { 1, 0 } ) },
-    p3{ &hexs3, expected( 25, { 17, 8 } ) },
-    p9{ &hexs9, expected( 1, { 0, 1 } ) };
-    for( auto const & hs: { p, p3, p9 } )
-    {
-      CellBlockABC const * h = hs.first;
-      localIndex const & expectedSize = hs.second;
 
       ASSERT_EQ( h->size(), expectedSize );
       ASSERT_EQ( h->getElemToNodes().size( 0 ), expectedSize );

@@ -107,7 +107,7 @@ TEST( PAMELAImport, testGMSH )
   inputStreamMesh <<
     "<?xml version=\"1.0\" ?>" <<
     "  <Mesh xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:noNamespaceSchemaLocation=\"geos_v0.0.xsd\">" <<
-    "  <PAMELAMeshGenerator name=\"ToyModel\" " <<
+    "  <PAMELAMesh name=\"ToyModel\" " <<
     "  fieldsToImport=\"{barycenter}\""<<
     "  fieldNamesInGEOSX=\"{barycenter}\""<<
     "  file=\"" <<gmshFilePath.c_str()<< "\"/>"<<
@@ -139,7 +139,7 @@ TEST( PAMELAImport, testECLIPSE )
   inputStreamMesh <<
     "<?xml version=\"1.0\" ?>" <<
     "  <Mesh xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:noNamespaceSchemaLocation=\"geos_v0.0.xsd\">" <<
-    "  <PAMELAMeshGenerator name=\"ToyModel\" " <<
+    "  <PAMELAMesh name=\"ToyModel\" " <<
     "  fieldsToImport=\"{PERM}\""<<
     "  fieldNamesInGEOSX=\"{PERM}\""<<
     "  file=\"" << eclipseFilePath.c_str()<< "\"/>"<<

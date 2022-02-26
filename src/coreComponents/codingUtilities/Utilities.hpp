@@ -150,10 +150,11 @@ VAL findOption( mapBase< KEY, VAL, SORTED > const & map,
  * @param map the map
  * @return a vector of keys
  */
-template< typename KEY, typename VAL, typename SORTED >
-std::vector< KEY > mapKeys( mapBase< KEY, VAL, SORTED > const & map )
+template< typename MAP >
+std::vector< typename MAP::key_type >
+mapKeys( MAP const & map )
 {
-  std::vector< KEY > keys;
+  std::vector< typename MAP::key_type > keys;
   std::transform( map.begin(), map.end(), std::back_inserter( keys ), [=]( auto const & p ){ return p.first; } );
   return keys;
 }
