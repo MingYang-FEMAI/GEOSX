@@ -103,7 +103,7 @@ public:
   virtual void freeResources() override;
 
   /// Type of map used to store cell lists
-  using CellMapType = std::unordered_map< ElementType, std::unordered_map< int, std::vector< vtkIdType > > >;
+  using CellMapType = std::map< ElementType, std::unordered_map< int, std::vector< vtkIdType > > >;
 
 private:
 

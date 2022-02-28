@@ -330,10 +330,10 @@ ElementType convertVtkToGeosxElementType( VTKCellType const cellType )
   return ElementType::Polyhedron;
 }
 
-std::unordered_map< ElementType, std::vector< vtkIdType > >
+std::map< ElementType, std::vector< vtkIdType > >
 splitElementsByType( vtkUnstructuredGrid & mesh )
 {
-  std::unordered_map< ElementType, std::vector< vtkIdType > > elemsByType;
+  std::map< ElementType, std::vector< vtkIdType > > elemsByType;
   {
     // Use a temporary array for speed (avoid accessing maps in a hot loop).
     std::array< std::vector< vtkIdType >, numElementTypes() > cellsByTypeTemp;
@@ -382,7 +382,7 @@ splitElementsByType( vtkUnstructuredGrid & mesh )
 }
 
 VTKMeshGenerator::CellMapType
-splitElementsByTypeAndAttribute( std::unordered_map< ElementType, std::vector< vtkIdType > > & elemsByType,
+splitElementsByTypeAndAttribute( std::map< ElementType, std::vector< vtkIdType > > & elemsByType,
                                  vtkDataArray * const attributeDataArray )
 {
   VTKMeshGenerator::CellMapType elemsByTypeAndAttribute;
@@ -466,7 +466,7 @@ buildCellMap( vtkUnstructuredGrid & mesh,
               string const & attributeName )
 {
   // First, pass through all VTK cells and split them int sub-lists based on type.
-  std::unordered_map< ElementType, std::vector< vtkIdType > > cellsByType = splitElementsByType( mesh );
+  std::map< ElementType, std::vector< vtkIdType > > cellsByType = splitElementsByType( mesh );
 
   // Now, actually split into groups according to region attribute, if present
   vtkDataArray * const attributeDataArray =
