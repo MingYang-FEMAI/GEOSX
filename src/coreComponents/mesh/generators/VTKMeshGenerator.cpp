@@ -795,14 +795,18 @@ void VTKMeshGenerator::importFields( DomainPartition & domain ) const
 
   for( auto const & typeRegions : m_cellMap )
   {
-    for( auto const & regionCells : typeRegions.second )
+    // Restrict data import to 3D cells
+    if( getElementDim( typeRegions.first ) == 3 )
     {
-      importFieldOnCellElementSubRegion( regionCells.first,
-                                         typeRegions.first,
-                                         regionCells.second,
-                                         elemManager,
-                                         m_fieldNamesInGEOSX,
-                                         srcArrays );
+      for( auto const & regionCells: typeRegions.second )
+      {
+        importFieldOnCellElementSubRegion( regionCells.first,
+                                           typeRegions.first,
+                                           regionCells.second,
+                                           elemManager,
+                                           m_fieldNamesInGEOSX,
+                                           srcArrays );
+      }
     }
   }
 
@@ -873,6 +877,12 @@ void VTKMeshGenerator::buildSurfaces( CellBlockManager & cellBlockManager ) cons
   for( auto const & surfaceCells: m_cellMap.at( ElementType::Polygon ) )
   {
     int const & surfaceId = surfaceCells.first;
+    if( surfaceId < 0 )
+    {
+      // Unlabeled surface elements are ignored
+      continue;
+    }
+
     std::vector< vtkIdType > const & cellIds = surfaceCells.second;
     string const surfaceName = std::to_string( surfaceId );
     GEOSX_LOG_LEVEL_RANK_0( 1, "Importing surface " << surfaceName );
