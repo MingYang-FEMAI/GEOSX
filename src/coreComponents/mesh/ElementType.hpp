@@ -38,7 +38,9 @@ enum class ElementType : integer
   Pyramid,       ///< Five-node pyramid element
   Prism,         ///< Six-node wedge element
   Hexahedron,    ///< Eight-node hexahedral element
-  Polyhedron     ///< General polyhedral element
+  Polyhedron,    ///< General polyhedral element
+  // NOTE: If you add anything below Polyhedron,
+  // don't forget to update numElementTypes() below.
 };
 
 /**

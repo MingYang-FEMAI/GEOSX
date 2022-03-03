@@ -634,8 +634,6 @@ stress - traction is applied to the faces as specified by the inner product of i
 		<xsd:attribute name="cellBlockNames" type="string_array" use="required" />
 		<!--elementTypes => Element types of each mesh block-->
 		<xsd:attribute name="elementTypes" type="string_array" use="required" />
-		<!--logLevel => Log level-->
-		<xsd:attribute name="logLevel" type="integer" default="0" />
 		<!--nx => Number of elements in the x-direction within each mesh block-->
 		<xsd:attribute name="nx" type="integer_array" use="required" />
 		<!--ny => Number of elements in the y-direction within each mesh block-->
@@ -707,8 +705,6 @@ stress - traction is applied to the faces as specified by the inner product of i
 		<xsd:attribute name="elementTypes" type="string_array" use="required" />
 		<!--hardRadialCoords => Sets the radial spacing to specified values-->
 		<xsd:attribute name="hardRadialCoords" type="real64_array" default="{0}" />
-		<!--logLevel => Log level-->
-		<xsd:attribute name="logLevel" type="integer" default="0" />
 		<!--nr => Number of elements in the radial direction-->
 		<xsd:attribute name="nr" type="integer_array" use="required" />
 		<!--nt => Number of elements in the tangent direction-->

@@ -537,8 +537,8 @@ namespace internal
 template< typename T, typename ENABLE = void >
 struct MpiTypeImpl {};
 
-#ifndef ADD_MPI_TYPE_MAP
-#define ADD_MPI_TYPE_MAP( T, MPI_T ) template<> struct MpiTypeImpl< T > { static MPI_Datatype get() { return MPI_T; } }
+#define ADD_MPI_TYPE_MAP( T, MPI_T ) \
+  template<> struct MpiTypeImpl< T > { static MPI_Datatype get() { return MPI_T; } }
 
 ADD_MPI_TYPE_MAP( float, MPI_FLOAT );
 ADD_MPI_TYPE_MAP( double, MPI_DOUBLE );
@@ -558,7 +558,6 @@ ADD_MPI_TYPE_MAP( unsigned long long int, MPI_UNSIGNED_LONG_LONG );
 ADD_MPI_TYPE_MAP( bool, MPI_CXX_BOOL );
 
 #undef ADD_MPI_TYPE_MAP
-#endif
 
 template< typename T >
 struct MpiTypeImpl< T, std::enable_if_t< std::is_enum< T >::value > >

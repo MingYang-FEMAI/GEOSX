@@ -97,12 +97,6 @@ TEST( VTKImport, cube )
     SortedArray< localIndex > const & allNodes = cellBlockManager.getNodeSets().at( "all" );
     ASSERT_EQ( allNodes.size(), expectedNumNodes );
 
-    // The "-1" set contains 3 quads connected in L shape.
-    // 2 of those quads touch in the center of the cube: 6 nodes for MPI rank 0.
-    // Rank 1 only has one cube: 4 nodes.
-    SortedArray< localIndex > const & nodesNoRegion = cellBlockManager.getNodeSets().at( "-1" );
-    ASSERT_EQ( nodesNoRegion.size(), expected( 8, { 6, 4 } ) );
-
     // The "2" set are all the boundary nodes (64 - 8 inside nodes = 56),
     // minus an extra node that belongs to regions -1 and 9 only.
     SortedArray< localIndex > const & nodesRegion2 = cellBlockManager.getNodeSets().at( "2" );
@@ -113,10 +107,8 @@ TEST( VTKImport, cube )
     SortedArray< localIndex > const & nodesRegion9 = cellBlockManager.getNodeSets().at( "9" );
     ASSERT_EQ( nodesRegion9.size(), expected( 4, { 0, 4 } ) );
 
-    // 1 elements type on 3 regions ("-1", "3", "9") = 3 sub-groups
-    ASSERT_EQ( cellBlockManager.getCellBlocks().numSubGroups(), 3 );
-
     // FIXME How to get the CellBlock as a function of the region, without knowing the naming pattern.
+    // 1 elements type on 3 regions ("-1", "3", "9") = 3 sub-groups
     std::array< std::pair< string, int >, 3 > const expectedCellBlocks =
     {
       {

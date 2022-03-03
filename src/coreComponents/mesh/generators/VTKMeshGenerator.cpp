@@ -74,15 +74,15 @@ namespace
 {
 
 template< typename VTK_ARRAY >
-VTK_ARRAY * getDataArrayOptional( vtkFieldData * source,
+VTK_ARRAY * getDataArrayOptional( vtkFieldData & source,
                                   string const & name )
 {
   // returns nullptr if either lookup or cast fail
-  return VTK_ARRAY::FastDownCast( source->GetAbstractArray( name.c_str() ) );
+  return VTK_ARRAY::FastDownCast( source.GetAbstractArray( name.c_str() ) );
 }
 
 template< typename VTK_ARRAY >
-VTK_ARRAY & getDataArray( vtkFieldData * source,
+VTK_ARRAY & getDataArray( vtkFieldData & source,
                           string const & name )
 {
   VTK_ARRAY * const array = getDataArrayOptional< VTK_ARRAY >( source, name );
@@ -222,7 +222,7 @@ real64 writeMeshNodes( vtkUnstructuredGrid & mesh,
   real64 xMax[3] = { minReal, minReal, minReal };
 
   vtkIdTypeArray const & globalPointIdDataArray =
-    getDataArray< vtkIdTypeArray >( mesh.GetPointData(), "GlobalPointIds" );
+    getDataArray< vtkIdTypeArray >( *mesh.GetPointData(), "GlobalPointIds" );
 
   for( vtkIdType v = 0; v < mesh.GetNumberOfPoints(); ++v )
   {
@@ -331,70 +331,88 @@ ElementType convertVtkToGeosxElementType( VTKCellType const cellType )
 }
 
 std::map< ElementType, std::vector< vtkIdType > >
-splitElementsByType( vtkUnstructuredGrid & mesh )
+splitCellsByType( vtkUnstructuredGrid & mesh )
 {
-  std::map< ElementType, std::vector< vtkIdType > > elemsByType;
-  {
-    // Use a temporary array for speed (avoid accessing maps in a hot loop).
-    std::array< std::vector< vtkIdType >, numElementTypes() > cellsByTypeTemp;
-    for( vtkIdType c = 0; c < mesh.GetNumberOfCells(); c++ )
-    {
-      ElementType const elemType = convertVtkToGeosxElementType( static_cast< VTKCellType >( mesh.GetCellType( c ) ) );
-      cellsByTypeTemp[static_cast< integer >( elemType )].push_back( c );
-    }
-    // Convert from array to map while performing some checks
-    for( integer t = 0; t < numElementTypes(); ++t )
-    {
-      if( cellsByTypeTemp[t].empty() )
-      {
-        continue;
-      }
-      ElementType const type = static_cast< ElementType >( t );
-      int const dim = getElementDim( type );
+  std::map< ElementType, std::vector< vtkIdType > > typeToCells;
+  vtkIdType const numCells = mesh.GetNumberOfCells();
 
-      switch( dim )
+  // Count the number of each cell type
+  std::array< size_t, numElementTypes() > cellTypeCounts{};
+  for( vtkIdType c = 0; c < numCells; c++ )
+  {
+    ElementType const elemType = convertVtkToGeosxElementType( static_cast< VTKCellType >( mesh.GetCellType( c ) ) );
+    ++cellTypeCounts[static_cast< integer >( elemType )];
+  }
+
+  // Allocate space to hold cell id lists by type
+  std::array< std::vector< vtkIdType >, numElementTypes() > cellListsByType;
+  for( integer t = 0; t < numElementTypes(); ++t )
+  {
+    cellListsByType[t].reserve( cellTypeCounts[t] );
+  }
+
+  // Collect cell lists for each type (using array for speed in a hot loop)
+  for( vtkIdType c = 0; c < numCells; c++ )
+  {
+    ElementType const elemType = convertVtkToGeosxElementType( static_cast< VTKCellType >( mesh.GetCellType( c ) ) );
+    cellListsByType[static_cast< integer >( elemType )].push_back( c );
+  }
+
+  // Convert from array to map while also performing some checks
+  for( integer t = 0; t < numElementTypes(); ++t )
+  {
+    // Avoid creating unneeded map entries that will show up in statistics
+    if( cellListsByType[t].empty() )
+    {
+      continue;
+    }
+
+    ElementType const type = static_cast< ElementType >( t );
+    switch( getElementDim( type ) )
+    {
+      case 0:
+      case 1:
       {
-        case 0:
-        case 1:
-        {
-          // Ignore vertex/line elements for now; maybe later we can import well polylines here
-          break;
-        }
-        case 2:
-        {
-          // Merge all 2D elements together as polygons (we don't track their shapes).
-          std::vector< vtkIdType > & surfaceCells = elemsByType[ ElementType::Polygon ];
-          surfaceCells.insert( surfaceCells.end(), cellsByTypeTemp[t].begin(), cellsByTypeTemp[t].end() );
-          break;
-        }
-        case 3:
-        {
-          // Collect 3D elements as is
-          elemsByType.emplace( type, std::move( cellsByTypeTemp[t] ) );
-          break;
-        }
-        default:
-          break;
+        // Ignore vertex/line elements for now; maybe later we can import well polylines here
+        break;
+      }
+      case 2:
+      {
+        // Merge all 2D elements together as polygons (we don't track their shapes).
+        std::vector< vtkIdType > & surfaceCells = typeToCells[ ElementType::Polygon ];
+        surfaceCells.insert( surfaceCells.end(), cellListsByType[t].begin(), cellListsByType[t].end() );
+        break;
+      }
+      case 3:
+      {
+        // Collect 3D elements as is
+        typeToCells.emplace( type, std::move( cellListsByType[t] ) );
+        break;
+      }
+      default:
+      {
+        GEOSX_ERROR( "Invalid element dimension: " << getElementDim( type ) );
       }
     }
   }
-  return elemsByType;
+
+  return typeToCells;
 }
 
 VTKMeshGenerator::CellMapType
-splitElementsByTypeAndAttribute( std::map< ElementType, std::vector< vtkIdType > > & elemsByType,
-                                 vtkDataArray * const attributeDataArray )
+splitCellsByTypeAndAttribute( std::map< ElementType, std::vector< vtkIdType > > & typeToCells,
+                              vtkDataArray * const attributeDataArray )
 {
-  VTKMeshGenerator::CellMapType elemsByTypeAndAttribute;
-  for( auto & t2c : elemsByType )
+  VTKMeshGenerator::CellMapType typeToAttributeToCells;
+  for( auto & t2c : typeToCells )
   {
     ElementType const elemType = t2c.first;
     std::vector< vtkIdType > & cells = t2c.second;
-    std::unordered_map< int, std::vector< vtkIdType > > & elemsByAttribute = elemsByTypeAndAttribute[elemType];
+    std::unordered_map< int, std::vector< vtkIdType > > & attributeToCells = typeToAttributeToCells[elemType];
 
     if( attributeDataArray == nullptr )
     {
-      elemsByAttribute.emplace( -1, std::move( cells ) );
+      attributeToCells.emplace( -1, std::move( cells ) );
     }
     else
     {
@@ -404,15 +422,25 @@ splitElementsByTypeAndAttribute( std::map< ElementType, std::vector< vtkIdType >
       {
         using ArrayType = TYPEOFPTR( attributeArray );
         vtkDataArrayAccessor< ArrayType > attribute( attributeArray );
+        std::unordered_map< int, size_t > cellCounts;
         for( vtkIdType c: cells )
         {
           int const region = static_cast< int >( attribute.Get( c, 0 ) );
-          elemsByAttribute[region].push_back( c );
+          ++cellCounts[region];
+        }
+        for( auto const & count : cellCounts )
+        {
+          attributeToCells[count.first].reserve( count.second );
+        }
+        for( vtkIdType c: cells )
+        {
+          int const region = static_cast< int >( attribute.Get( c, 0 ) );
+          attributeToCells[region].push_back( c );
         }
       } );
     }
   }
-  return elemsByTypeAndAttribute;
+  return typeToAttributeToCells;
 }
 
 void extendCellMapWithRemoteKeys( VTKMeshGenerator::CellMapType & cellMap )
@@ -456,7 +484,7 @@ void extendCellMapWithRemoteKeys( VTKMeshGenerator::CellMapType & cellMap )
 /**
  * @brief Collect lists of VTK cell indices organized by type and attribute value.
  * @param[in] mesh the vtkUnstructuredGrid that is loaded
- * @param[int] attributeName name of the VTK data array containing the attribute, if any
+ * @param[in] attributeName name of the VTK data array containing the attribute, if any
  * @return A map from element type to a map of attribute to the associated cell ids for the current rank.
  *         The map contains entries for all types and attribute values across all MPI ranks,
  *         even if there are no cells on current rank (then the list will be empty).
@@ -466,14 +494,14 @@ buildCellMap( vtkUnstructuredGrid & mesh,
               string const & attributeName )
 {
   // First, pass through all VTK cells and split them int sub-lists based on type.
-  std::map< ElementType, std::vector< vtkIdType > > cellsByType = splitElementsByType( mesh );
+  std::map< ElementType, std::vector< vtkIdType > > typeToCells = splitCellsByType( mesh );
 
   // Now, actually split into groups according to region attribute, if present
   vtkDataArray * const attributeDataArray =
-    getDataArrayOptional< vtkDataArray >( mesh.GetCellData(), attributeName );
+    getDataArrayOptional< vtkDataArray >( *mesh.GetCellData(), attributeName );
 
   VTKMeshGenerator::CellMapType cellMap =
-    splitElementsByTypeAndAttribute( cellsByType, attributeDataArray );
+    splitCellsByTypeAndAttribute( typeToCells, attributeDataArray );
 
   // Gather all element types encountered on any rank and enrich the local collection
   extendCellMapWithRemoteKeys( cellMap );
@@ -517,7 +545,8 @@ void fillCellBlock( vtkUnstructuredGrid & mesh,
 
   // Writing connectivity and Local to Global
   std::vector< int > const nodeOrder = getGeosxToVtkNodeOrdering( elemType );
-  vtkIdTypeArray const & globalCellIdsDataArray = getDataArray< vtkIdTypeArray >( mesh.GetCellData(), "GlobalCellIds" );
+  vtkIdTypeArray const & globalCellIdsDataArray =
+    getDataArray< vtkIdTypeArray >( *mesh.GetCellData(), "GlobalCellIds" );
   localIndex cellCount = 0;
   for( vtkIdType c: cellIds )
   {
@@ -674,19 +703,19 @@ void importRegularField( std::vector< vtkIdType > const & cellIds,
 }
 
 void printMeshStatistics( CellBlockManager const & cellBlockManager,
-                          VTKMeshGenerator::CellMapType const & elemsByType )
+                          VTKMeshGenerator::CellMapType const & cellMap )
 {
   globalIndex const allNodes = MpiWrapper::sum( LvArray::integerConversion< globalIndex >( cellBlockManager.numNodes() ) );
   globalIndex allElems = 0;
   globalIndex maxTypeElems = 0;
   std::map< ElementType, globalIndex > elemCounts;
-  for( auto const & typeToRegions : elemsByType )
+  for( auto const & typeToCells : cellMap )
   {
     localIndex const localElems =
-      std::accumulate( typeToRegions.second.begin(), typeToRegions.second.end(), localIndex{},
+      std::accumulate( typeToCells.second.begin(), typeToCells.second.end(), localIndex{},
                        []( auto const s, auto const & region ) { return s + region.second.size(); } );
     globalIndex const globalElems = MpiWrapper::sum( LvArray::integerConversion< globalIndex >( localElems ) );
-    elemCounts[typeToRegions.first] = globalElems;
+    elemCounts[typeToCells.first] = globalElems;
     allElems += globalElems;
     maxTypeElems = std::max( maxTypeElems, globalElems );
   }
