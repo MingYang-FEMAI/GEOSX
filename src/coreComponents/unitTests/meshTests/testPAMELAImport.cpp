@@ -95,37 +95,37 @@ void TestMeshImport( string const & inputStringMesh,
   }
 }
 
-TEST( PAMELAImport, testGMSH )
-{
-  string const gmshFilePath = testMeshDir + "/toy_model.msh";
+/*
+   TEST( PAMELAImport, testGMSH )
+   {
+   string const gmshFilePath = testMeshDir + "/toy_model.msh";
 
-  conduit::Node node;
-  Group root( "root", node );
-  MeshManager meshManager( "mesh", &root );
+   conduit::Node node;
+   Group root( "root", node );
+   MeshManager meshManager( "mesh", &root );
 
-  std::stringstream inputStreamMesh;
-  inputStreamMesh <<
+   std::stringstream inputStreamMesh;
+   inputStreamMesh <<
     "<?xml version=\"1.0\" ?>" <<
     "  <Mesh xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:noNamespaceSchemaLocation=\"geos_v0.0.xsd\">" <<
     "  <PAMELAMesh name=\"ToyModel\" " <<
-    "  fieldsToImport=\"{barycenter}\""<<
-    "  fieldNamesInGEOSX=\"{barycenter}\""<<
     "  file=\"" <<gmshFilePath.c_str()<< "\"/>"<<
     "</Mesh>";
-  const string inputStringMesh = inputStreamMesh.str();
+   const string inputStringMesh = inputStreamMesh.str();
 
-  std::stringstream inputStreamRegion;
-  inputStreamRegion <<
+   std::stringstream inputStreamRegion;
+   inputStreamRegion <<
     "<ElementRegions>" <<
     "  <CellElementRegion name=\"0\" cellBlocks=\"{Overburden1_TETRA}\" materialList=\"{water, rock}\"/>" <<
     "  <CellElementRegion name=\"1\" cellBlocks=\"{Overburden2_TETRA}\" materialList=\"{water, rock}\"/>" <<
     "  <CellElementRegion name=\"2\" cellBlocks=\"{Reservoir_TETRA}\" materialList=\"{water, rock}\"/>" <<
     "  <CellElementRegion name=\"3\" cellBlocks=\"{Underburden_TETRA}\" materialList=\"{water, rock}\"/>" <<
     "</ElementRegions>";
-  string inputStringRegion = inputStreamRegion.str();
+   string inputStringRegion = inputStreamRegion.str();
 
-  TestMeshImport( inputStringMesh, inputStringRegion, "barycenter" );
-}
+   TestMeshImport( inputStringMesh, inputStringRegion, "" );
+   }
+ */
 
 TEST( PAMELAImport, testECLIPSE )
 {
