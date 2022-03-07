@@ -34,6 +34,7 @@
 #include <vtkArrayDispatch.h>
 #include <vtkBoundingBox.h>
 #include <vtkCellData.h>
+#include <vtkDIYExplicitAssigner.h>
 #include <vtkGenerateGlobalIds.h>
 #include <vtkPointData.h>
 #include <vtkRedistributeDataSetFilter.h>
@@ -169,6 +170,37 @@ loadVTKMesh( Path const & filePath )
 }
 
 /**
+ * @brief Compute assignments of mesh partitions produced by vtkRedistributeDataSetFilter to ranks.
+ * @param numParts number of partitions (cuts)
+ * @param numRanks number of MPI ranks
+ * @return a vector of rank assignments
+ *
+ * This function merges partitions starting from the back, until the desired number is reached.
+ * It is a stripped down version of vtkDIYKdTreeUtilities::ComputeAssignments(). We cannot call
+ * that function directly because it's part of a VTK private module (i.e. header not installed).
+ * We rely on copying the assignment procedure for lack of a better solution.
+ * In particular, there is no API to extract this information out of vtkRedistributeDataSetFilter.
+ */
+std::vector< int > computePartitionAssignments( int const numParts, int const numRanks )
+{
+  GEOSX_ERROR_IF_NE_MSG( numParts, vtkMath::NearestPowerOfTwo( numRanks ),
+                         "Number of partitions is not a nearest power of 2 of number of ranks."
+                         "This could indicate a change in VTK implementation of mesh partitioner." );
+
+  std::vector< int > assignments( numParts );
+  std::iota( assignments.begin(), assignments.end(), 0 );
+
+  int numToMerge = numParts - numRanks;
+  int rank = numRanks - 1;
+  for( int cc = numParts - 2; cc >= 0 && numToMerge > 0; cc -= 2, --numToMerge, --rank )
+  {
+    assignments[cc] = assignments[cc + 1] = rank;
+  }
+  return assignments;
+}
+
+
+/**
  * @brief Redistribute the mesh among the available MPI ranks
  * @details this method will also generate global ids for points and cells in the VTK Mesh
  * @param[in] loadedMesh the mesh that was loaded on one or several MPI ranks
@@ -193,6 +225,41 @@ redistributeMesh( vtkUnstructuredGrid & loadedMesh,
   generator->Update();
   vtkSmartPointer< vtkUnstructuredGrid > mesh = vtkUnstructuredGrid::SafeDownCast( generator->GetOutputDataObject( 0 ) );
   return mesh;
+}
+
+/**
+ * @brief Compute the potential rank neighbor list
+ * @param[in] cuts the bounding boxes used by the VTK partitioner for all ranks
+ * @details Compute the rank neighbors. The asssumption is that 2 ranks are neighbors if
+ * the corresponding bounding boxes intersect.
+ */
+std::vector< int > computeMPINeighborRanks( std::vector< vtkBoundingBox > const & cuts )
+{
+  int const numParts = LvArray::integerConversion< int >( cuts.size() );
+  int const numRanks = MpiWrapper::commSize();
+  int const thisRank = MpiWrapper::commRank();
+
+  std::vector< int > const assignments = computePartitionAssignments( numParts, numRanks );
+  std::vector< vtkBoundingBox > myCuts;
+  for( int i = 0; i < numParts; ++i )
+  {
+    if( assignments[i] == thisRank )
+    {
+      myCuts.push_back( cuts[i] );
+    }
+  }
+
+  std::set< int > neighbors;
+  for( int i = 0; i < numParts; ++i )
+  {
+    if( assignments[i] != thisRank && std::any_of( myCuts.begin(), myCuts.end(),
+                                                   [&]( auto const & b ) { return b.Intersects( cuts[i] ); } ) )
+    {
+      neighbors.insert( assignments[i] );
+    }
+  }
+
+  return { neighbors.begin(), neighbors.end() };
 }
 
 /**
@@ -241,33 +308,6 @@ real64 writeMeshNodes( vtkUnstructuredGrid & mesh,
   MpiWrapper::allReduce( xMax, xMax, 3, MPI_MAX, MPI_COMM_GEOSX );
   LvArray::tensorOps::subtract< 3 >( xMax, xMin );
   return LvArray::tensorOps::l2Norm< 3 >( xMax );
-}
-
-/**
- * @brief Compute the potential rank neighbor list
- * @param[in] cuts the bounding boxes used by the VTK partitioner for all ranks
- * @details Compute the rank neighbors. The asssumption is that 2 ranks are neighbors if
- * the corresponding bounding boxes intersect.
- */
-std::vector< int > computeMPINeighborRanks( std::vector< vtkBoundingBox > const & cuts )
-{
-  int nbRanks = MpiWrapper::commSize();
-  GEOSX_ERROR_IF_NE_MSG( LvArray::integerConversion< int >( cuts.size() ), nbRanks,
-                         "The number of VTK cuts does not match the number of ranks" );
-
-  std::vector< int > rankNeighbor;
-  int currentRank = MpiWrapper::commRank();
-  vtkBoundingBox currentBox = cuts[currentRank];
-
-  for( int i = 0; i < nbRanks; ++i )
-  {
-    if( i != currentRank && currentBox.Intersects( cuts[i] ) )
-    {
-      rankNeighbor.push_back( i );
-    }
-  }
-
-  return rankNeighbor;
 }
 
 /**
@@ -702,11 +742,15 @@ void importRegularField( std::vector< vtkIdType > const & cellIds,
   } );
 }
 
-void printMeshStatistics( CellBlockManager const & cellBlockManager,
+void printMeshStatistics( CellBlockManager & cellBlockManager,
                           VTKMeshGenerator::CellMapType const & cellMap )
 {
-  globalIndex const allNodes = MpiWrapper::sum( LvArray::integerConversion< globalIndex >( cellBlockManager.numNodes() ) );
-  globalIndex allElems = 0;
+  // TODO cellBlockManager should be const, but it's API is weird...
+  arrayView1d< globalIndex const > const nodeGlobalIndices = cellBlockManager.getNodeLocalToGlobal();
+  globalIndex const maxLocalNode = *std::max_element( nodeGlobalIndices.begin(), nodeGlobalIndices.end() );
+  globalIndex const numGlobalNodes = MpiWrapper::max( maxLocalNode ) + 1;
+
+  globalIndex numGlobalElems = 0;
   globalIndex maxTypeElems = 0;
   std::map< ElementType, globalIndex > elemCounts;
   for( auto const & typeToCells : cellMap )
@@ -716,7 +760,7 @@ void printMeshStatistics( CellBlockManager const & cellBlockManager,
                        []( auto const s, auto const & region ) { return s + region.second.size(); } );
     globalIndex const globalElems = MpiWrapper::sum( LvArray::integerConversion< globalIndex >( localElems ) );
     elemCounts[typeToCells.first] = globalElems;
-    allElems += globalElems;
+    numGlobalElems += globalElems;
     maxTypeElems = std::max( maxTypeElems, globalElems );
   }
   int const width = static_cast< int >( std::log10( maxTypeElems ) + 1 );
@@ -725,7 +769,7 @@ void printMeshStatistics( CellBlockManager const & cellBlockManager,
   {
     elemStats << GEOSX_FMT( "\n{:>15}: {:>{}}", toString( typeCount.first ), typeCount.second, width );
   }
-  GEOSX_LOG_RANK_0( GEOSX_FMT( "Number of nodes: {}\nNumber of elems: {}{}", allNodes, allElems, elemStats.str() ) );
+  GEOSX_LOG_RANK_0( GEOSX_FMT( "Number of nodes: {}\nNumber of elems: {}{}", numGlobalNodes, numGlobalElems, elemStats.str() ) );
 }
 
 /**
@@ -930,10 +974,6 @@ void VTKMeshGenerator::generateMesh( DomainPartition & domain )
 {
   // TODO refactor void MeshGeneratorBase::generateMesh( DomainPartition & domain )
   GEOSX_MARK_FUNCTION;
-
-  int const mpiSize = MpiWrapper::commSize();
-  GEOSX_ERROR_IF( ( mpiSize & ( mpiSize - 1 ) ) != 0,
-                  GEOSX_FMT( "Number of processes {} is not a power of 2. {} can't be used.", mpiSize, catalogName() ) );
 
   vtkSmartPointer< vtkMultiProcessController > controller = getVTKController();
   vtkMultiProcessController::SetGlobalController( controller );
